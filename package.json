@@ -1,0 +1,16 @@
+{
+  "name": "moallem",
+  "version": "0.1.0",
+  "description": "Open-source manager for private tutors and small learning centers: groups, students, attendance, monthly fees, exam scores, and Telegram updates to students and parents.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {},
+  "license": "MIT",
+  "keywords": ["tutor", "teacher", "attendance", "students", "parents", "telegram", "education", "self-hosted", "arabic"]
+}

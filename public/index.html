@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moallem</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root { --accent: #1D4ED8; --accent-soft: #DBEAFE; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #93C5FD; --accent-ink: #0B1B3A; --accent-soft: #172A4E; } }
+  .slot { border-inline-start: 4px solid var(--accent); }
+  .att { display: grid; gap: 6px; }
+  .att-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .att-row:last-child { border-bottom: 0; }
+  .att-row .nm { flex: 1; min-width: 140px; font-weight: 600; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); padding: 5px 10px; cursor: pointer; font-size: .85rem; color: var(--muted); }
+  .seg button[aria-pressed="true"].present { background: var(--good-soft); color: var(--good); font-weight: 700; }
+  .seg button[aria-pressed="true"].absent { background: var(--bad-soft); color: var(--bad); font-weight: 700; }
+  .seg button[aria-pressed="true"].late { background: var(--warn-soft); color: var(--warn); font-weight: 700; }
+  .seg button[aria-pressed="true"].excused { background: var(--bg); color: var(--ink); font-weight: 700; }
+  .sched-row { display: flex; gap: 6px; align-items: center; }
+  .sched-row select, .sched-row input { width: auto; }
+  .score { width: 80px !important; }
+  dialog.ed { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); width: min(640px, 94vw); padding: 20px; }
+  dialog.ed::backdrop { background: rgba(0,0,0,.45); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status"></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Student page</title>
+<style>
+  /* Student and parent page: schedule, attendance, fees, results. Phone first. */
+  :root { --c: #1D4ED8; --ink: #0F172A; --muted: #64748B; --bg: #F8FAFC; --card: #fff; --line: #E2E8F0; --good: #15803D; --warn: #B45309; --bad: #B91C1C; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 "Segoe UI", "Noto Sans Arabic", Tahoma, system-ui, sans-serif; padding: max(18px, env(safe-area-inset-top)) 16px 28px; }
+  main { max-width: 560px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: 1.4rem; } h2 { margin: 0 0 8px; font-size: 1.05rem; }
+  .muted { color: var(--muted); } .small { font-size: .85rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .head { background: var(--c); color: #fff; border: 0; } .head .muted { color: rgba(255,255,255,.8); }
+  table { width: 100%; border-collapse: collapse; } td { padding: 7px 4px; border-bottom: 1px solid var(--line); } tr:last-child td { border-bottom: 0; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+  .present, .paid, .free { background: #DCFCE7; color: var(--good); } .late, .partial { background: #FEF3C7; color: var(--warn); } .absent, .unpaid { background: #FEE2E2; color: var(--bad); } .excused { background: #E2E8F0; color: var(--muted); }
+  .btn { display: block; text-align: center; padding: 11px; border-radius: 12px; background: #229ED9; color: #fff; font-weight: 700; text-decoration: none; margin-top: 8px; }
+  .btn.alt { background: #fff; color: #229ED9; border: 1px solid #229ED9; }
+  .ann { border-inline-start: 3px solid var(--c); padding: 4px 10px; margin: 8px 0; white-space: pre-wrap; }
+  .num { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main id="app"><p class="muted">…</p></main>
+<script>
+(function () {
+  'use strict';
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  var ST = { present: 'حاضر', absent: 'غائب', late: 'متأخر', excused: 'بعذر', paid: 'مدفوع', partial: 'جزء', unpaid: 'لسه', free: 'مجاني' };
+  var token = location.pathname.split('/').pop();
+  fetch('/api/portal/' + encodeURIComponent(token)).then(function (r) { return r.json(); }).then(function (d) {
+    var app = document.getElementById('app');
+    if (!d.student) { app.innerHTML = '<p>الرابط ده مش صحيح.</p>'; return; }
+    document.title = d.student.name + ' · ' + (d.teacher.name || '');
+    var present = d.attendance.filter(function (a) { return a.status === 'present' || a.status === 'late'; }).length;
+    var h = '<section class="card head"><h1>' + esc(d.student.name) + '</h1><div class="muted">' + esc([d.teacher.name, d.teacher.subject].filter(Boolean).join(' · ')) + '</div></section>';
+    h += '<section class="card"><h2>المواعيد</h2>' + d.groups.map(function (g) {
+      return '<div><b>' + esc(g.name) + '</b>' + (g.place ? ' <span class="muted small">· ' + esc(g.place) + '</span>' : '') + '<div class="small muted">' + g.schedule.map(function (s) { return DAYS[s.day] + ' ' + s.time; }).join(' · ') + '</div></div>';
+    }).join('<hr style="border:0;border-top:1px solid var(--line)">') + '</section>';
+    if (d.announcements.length) h += '<section class="card"><h2>إعلانات</h2>' + d.announcements.map(function (a) { return '<div class="ann">' + esc(a.text) + '<div class="small muted">' + new Date(a.at).toLocaleDateString('ar-EG') + '</div></div>'; }).join('') + '</section>';
+    h += '<section class="card"><h2>المصاريف</h2><table>' + d.payments.map(function (p) {
+      return '<tr><td class="num">' + p.month + '</td><td class="num">' + p.paid + ' / ' + p.due + ' ' + esc(d.teacher.currency) + '</td><td><span class="pill ' + p.status + '">' + ST[p.status] + '</span></td></tr>';
+    }).join('') + '</table></section>';
+    h += '<section class="card"><h2>النتايج</h2>' + (d.exams.length ? '<table>' + d.exams.map(function (e) {
+      return '<tr><td>' + esc(e.title) + '<div class="small muted num">' + e.date + '</div></td><td class="num"><b>' + e.score + '</b> / ' + e.max + '</td><td class="small muted">الترتيب ' + e.rank + ' من ' + e.of + '</td></tr>';
+    }).join('') + '</table>' : '<p class="muted">لسه مفيش نتايج.</p>') + '</section>';
+    h += '<section class="card"><h2>الحضور (آخر 3 شهور)</h2>' + (d.attendance.length ? '<p class="small muted">حضر ' + present + ' من ' + d.attendance.length + ' حصة</p><table>' + d.attendance.slice(0, 30).map(function (a) {
+      return '<tr><td class="num">' + a.date + '</td><td>' + esc(a.group) + '</td><td><span class="pill ' + a.status + '">' + ST[a.status] + '</span></td></tr>';
+    }).join('') + '</table>' : '<p class="muted">لسه مفيش حصص متسجلة.</p>') + '</section>';
+    if (d.bot) {
+      h += '<section class="card"><h2>إشعارات تليجرام</h2><p class="small muted">اعرف مواعيد الحصص والغياب والنتايج أول بأول.</p>' +
+        (d.linked.student ? '<p class="small">✅ الطالب مربوط</p>' : '<a class="btn" href="https://t.me/' + esc(d.bot) + '?start=S-' + esc(d.student.code) + '">للطالب: فعّل الإشعارات</a>') +
+        (d.linked.parent ? '<p class="small">✅ ولي الأمر مربوط</p>' : '<a class="btn alt" href="https://t.me/' + esc(d.bot) + '?start=P-' + esc(d.student.code) + '">لولي الأمر: فعّل الإشعارات</a>') + '</section>';
+    }
+    h += '<p class="small muted" style="text-align:center"><a class="muted" href="https://github.com/mashraf1997/moallem">Moallem</a></p>';
+    app.innerHTML = h;
+  }).catch(function () { document.getElementById('app').innerHTML = '<p>حصلت مشكلة، جرّب تاني.</p>'; });
+})();
+</script>
+</body>
+</html>

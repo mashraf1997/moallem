@@ -7,6 +7,8 @@ import crypto from 'node:crypto';
 import { Telegram } from './telegram.js';
 import { hashPassword, verifyPassword, createSession, checkSession, parseCookies, RateLimiter } from './auth.js';
 import { send, readJson, clientIp, serveStatic, cookie, VERSION } from './http.js';
+import { demoConfig, resetData } from './demo-mode.js';
+import { buildDemo } from './demo-data.js';
 
 const ALPHA = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 const code6 = () => [...crypto.randomBytes(6)].map((b) => ALPHA[b % ALPHA.length]).join('');
@@ -45,7 +47,7 @@ export function localParts(ts, tz) {
 const weekdayOf = (date) => new Date(date + 'T12:00:00Z').getUTCDay();
 const toMin = (hm) => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + (m || 0); };
 
-export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' } = {}) {
+export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '', env = process.env } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
   const file = path.join(dataDir, 'moallem.json');
   const def = defaultData();
@@ -55,6 +57,11 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
   const flush = () => { clearTimeout(timer); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); fs.renameSync(file + '.tmp', file); };
   const save = () => { clearTimeout(timer); timer = setTimeout(flush, 200); };
   if (!loaded) flush();
+  // DEMO_MODE=true: a public showcase with sample data that resets on a timer.
+  const demo = demoConfig(env);
+  const resetDemo = () => { resetData(data, () => buildDemo(demo), demo); flush(); };
+  let demoTimer = null;
+  if (demo) { resetDemo(); demoTimer = setInterval(resetDemo, demo.resetMinutes * 60_000); demoTimer.unref?.(); }
 
   const tz = () => data.settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const loginLimiter = new RateLimiter(10, 15 * 60_000);
@@ -190,7 +197,8 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
     }
 
     // ----- owner auth -----
-    if (p === '/api/session' && method === 'GET') return send(res, 200, { needsSetup: !data.admin, authed: isAuthed(req), setupTokenRequired: Boolean(setupToken), version: VERSION, timezone: tz() });
+    if (demo && method === 'POST' && (p === '/api/setup' || p === '/api/password')) return send(res, 403, { error: 'Not available in the demo' });
+    if (p === '/api/session' && method === 'GET') return send(res, 200, { needsSetup: !data.admin, authed: isAuthed(req), setupTokenRequired: Boolean(setupToken), version: VERSION, timezone: tz(), demo: demo ? { password: demo.password, resetMinutes: demo.resetMinutes } : null });
     if (p === '/api/setup' && method === 'POST') {
       if (data.admin) return send(res, 409, { error: 'Already set up' });
       const body = await readJson(req);
@@ -416,7 +424,7 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
       const b = (await readJson(req)).settings || {};
       const s = data.settings;
       for (const k of ['teacherName', 'subject', 'currency', 'timezone']) if (typeof b[k] === 'string') s[k] = b[k].slice(0, 80);
-      if (typeof b.telegramToken === 'string' && !b.telegramToken.startsWith('••')) s.telegramToken = b.telegramToken.trim();
+      if (!demo && typeof b.telegramToken === 'string' && !b.telegramToken.startsWith('••')) s.telegramToken = b.telegramToken.trim();
       if (b.notify) {
         if (typeof b.notify.absence === 'boolean') s.notify.absence = b.notify.absence;
         if (typeof b.notify.examResults === 'boolean') s.notify.examResults = b.notify.examResults;
@@ -468,6 +476,7 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
 
   let tickTimer;
   return {
+    resetDemo,
     server, data, telegram, tick, dayPlan,
     async start(port) {
       await telegram.sync();
@@ -477,6 +486,7 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
       return server.address().port;
     },
     async stop() {
+      clearInterval(demoTimer);
       telegram.stop();
       clearInterval(tickTimer);
       flush();

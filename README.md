@@ -55,6 +55,10 @@ docker compose up -d
 | `PORT` | `3000` | HTTP port |
 | `DATA_DIR` | `./data` | Where `moallem.json` is stored. Back it up. |
 | `SETUP_TOKEN` | *(empty)* | Required to create the first admin when set |
+| `DEMO_MODE` | `false` | `true` makes this a public demo: sample data, a reset every hour, and settings that reach outside (tokens, keys, password) locked |
+| `DEMO_PASSWORD` | `demo1234` | Password shown on the demo sign-in screen |
+| `DEMO_RESET_MINUTES` | `60` | How often the demo data resets (minimum 5) |
+| `DEMO_LANG` | `ar` | Language of the sample data: `ar` or `en` |
 
 ## Development
 
